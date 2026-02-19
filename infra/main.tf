@@ -1,20 +1,20 @@
 terraform {
-  required_providers {
-    aws = {
-      source  = "hashicorp/aws"
-      version = "~> 4.16"
-    }
+  backend "s3" {
+    bucket         = "githubactions-tf-demo123"
+    key            = "terraform.tfstate"
+    region         = "us-east-1"
+    #dynamodb_table = "terraform-locks-example"
+    #encrypt        = true
   }
-  required_version = ">= 1.2.0"
 }
 provider "aws" {
   region  = "us-east-1"
 
 }
 resource "aws_instance" "my_instance" {
-  ami           = "ami-0015bce43071c5586"
+  ami           = "ami-0bb661687d1decf72"
   instance_type = "t3.micro"
   tags = {
-    Name = "my-ec2-instance-demo"
+    Name = "my-ec2-instance"
   }
 }
