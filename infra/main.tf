@@ -15,6 +15,6 @@ resource "aws_instance" "my_instance" {
   ami           = "ami-0015bce43071c5586"
   instance_type = "t3.micro"
   tags = {
-    Name = "my-ec2-instance"
+    Name = "my-ec2-instance-demo"
   }
 }
