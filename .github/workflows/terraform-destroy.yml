@@ -1,4 +1,3 @@
-destroy
 name: Terraform Destroy
 
 on:
