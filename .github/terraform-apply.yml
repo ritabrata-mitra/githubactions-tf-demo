@@ -1,0 +1,40 @@
+name: Terraform Apply After Merge
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'infra/**'
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  TF_WORKING_DIR: infra
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      reviewers:
+        - ritabrata-mitra
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: AWS Auth (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::711784092484:role/OIDC_Role
+          aws-region: us-east-1
+
+      - name: Terraform Init
+        run: terraform -chdir=${{ env.TF_WORKING_DIR }} init
+
+      - name: Terraform Apply
+        run: terraform -chdir=${{ env.TF_WORKING_DIR }} apply -auto-approve
