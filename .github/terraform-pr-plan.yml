@@ -3,8 +3,9 @@ name: Terraform PR Plan
 on:
   pull_request:
     branches: [ main ]
-    paths:
-      - 'infra/**'
+    # Remove paths filter temporarily while debugging
+    # paths:
+    #   - 'infra/**'
 
 permissions:
   id-token: write
@@ -15,6 +16,7 @@ env:
 
 jobs:
   plan:
+    name: Terraform PR Plan
     runs-on: ubuntu-latest
 
     steps:
@@ -22,6 +24,8 @@ jobs:
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.6.6
 
       - name: AWS Auth (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
