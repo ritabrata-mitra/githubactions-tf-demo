@@ -3,9 +3,8 @@ name: Terraform PR Plan
 on:
   pull_request:
     branches: [ main ]
-    # Remove paths filter temporarily while debugging
-    # paths:
-    #   - 'infra/**'
+    paths:
+      - 'infra/**'
 
 permissions:
   id-token: write
@@ -16,7 +15,7 @@ env:
 
 jobs:
   plan:
-    name: Terraform PR Plan
+    name: plan
     runs-on: ubuntu-latest
 
     steps:
