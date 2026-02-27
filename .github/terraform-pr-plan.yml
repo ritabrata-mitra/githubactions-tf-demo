@@ -29,7 +29,7 @@ jobs:
       - name: AWS Auth (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: arn:aws:iam::711784092484:role/OIDC_Role
+          role-to-assume: arn:aws:iam::767397844197:role/oidc
           aws-region: us-east-1
 
       - name: Terraform Init
