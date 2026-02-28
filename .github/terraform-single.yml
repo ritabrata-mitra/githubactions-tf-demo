@@ -152,7 +152,7 @@ jobs:
       - name: Configure AWS (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: arn:aws:iam::767397844197:role/oidc
+          role-to-assume: arn:aws:iam::905418203934:role/oidc
           aws-region: ${{ env.AWS_REGION }}
 
       - name: Terraform Init (idempotent)
