@@ -1,0 +1,10 @@
+name: _Debug Manual Run
+
+on:
+  workflow_dispatch: {}
+
+jobs:
+  echo:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "Hello, this proves manual runs are visible."
