@@ -1,33 +1,20 @@
-name: Terraform Apply
+name: Deploy VPC Module
 
 on:
-  push:
-    branches: ["main"]
   workflow_dispatch:
 
-permissions:
-  id-token: write
-  contents: read
-
 jobs:
-  terraform:
-    name: Deploy VPC Module
+  deploy:
     runs-on: self-hosted
 
     steps:
-      - name: Checkout repository
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Configure AWS Credentials (OIDC)
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: arn:aws:iam::577272335901:role/oidc
-          aws-region: us-east-1
-
-      - name: Install Terraform
-        uses: hashicorp/setup-terraform@v3
-        with:
-          terraform_version: 1.7.0
+      - name: Print public IP of GitHub runner
+        run: |
+          echo "Runner public IP:"
+          curl -s https://checkip.amazonaws.com
 
       - name: Terraform Init
         run: terraform init
@@ -36,5 +23,4 @@ jobs:
         run: terraform plan -var-file="terraform.tfvars"
 
       - name: Terraform Apply
-        if: github.ref == 'refs/heads/main'
         run: terraform apply -auto-approve -var-file="terraform.tfvars"
