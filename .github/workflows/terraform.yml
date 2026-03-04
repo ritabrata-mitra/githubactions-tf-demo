@@ -1,162 +1,40 @@
-name: Terraform 
+name: Terraform Apply
 
 on:
-  # 1) PRs: plan only
-  pull_request:
-    branches: [ main ]
-    paths:
-      - 'infra/**'
-  # 2) Main merges: plan+apply with env protection
   push:
-    branches: [ main ]
-    paths:
-      - 'infra/**'
-  # 3) Manual run
+    branches: ["main"]
   workflow_dispatch:
-    inputs:
-      env:
-        description: "Environment (dev|stage|prod)"
-        required: false
-        type: string
-      module_path:
-        description: "Terraform working dir (e.g., infra/dev/vpc)"
-        required: false
-        type: string
-      apply:
-        description: "Run apply? (true/false). Ignored on PR."
-        required: false
-        default: "false"
-        type: choice
-        options: ["false","true"]
 
 permissions:
   id-token: write
   contents: read
-  pull-requests: read
-
-env:
-  TF_VERSION: "1.6.6"
-  AWS_REGION: "us-east-1"
 
 jobs:
-  # --- Decide environment and working directory ---
-  resolve:
+  terraform:
+    name: Deploy VPC Module
     runs-on: ubuntu-latest
-    outputs:
-      env: ${{ steps.resolve.outputs.env }}
-      dir: ${{ steps.resolve.outputs.dir }}
-      will_apply: ${{ steps.resolve.outputs.will_apply }}
+
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-      - id: resolve
-        name: Resolve env + module dir + apply flag
-        shell: bash
-        run: |
-          # 1) ENV resolution: input > branch prefix > default: dev
-          INPUT_ENV="${{ inputs.env }}"
-          BRANCH_NAME="${{ github.head_ref || github.ref_name }}"
-
-          # Extract prefix before first slash if matched (dev/..., stage/..., prod/...)
-          GUESS_ENV=""
-          if [[ "$BRANCH_NAME" =~ ^(dev|stage|prod)(/|$) ]]; then
-            GUESS_ENV="${BASH_REMATCH[1]}"
-          fi
-
-          ENV="${INPUT_ENV:-$GUESS_ENV}"
-          if [[ -z "$ENV" ]]; then ENV="dev"; fi
-
-          # 2) MODULE PATH resolution
-          INPUT_DIR="${{ inputs.module_path }}"
-          # If provided manually, trust it. Otherwise try to guess from env if common module layout exists.
-          DIR="$INPUT_DIR"
-          if [[ -z "$DIR" ]]; then
-            # Try a couple of common module names as examples; replace with your real module names
-            # or leave empty to force manual input via workflow_dispatch.
-            if [[ -d "infra/${ENV}/vpc" ]]; then
-              DIR="infra/${ENV}/vpc"
-            elif [[ -d "infra/${ENV}/network" ]]; then
-              DIR="infra/${ENV}/network"
-            else
-              echo "::warning::No module_path provided and no default module path found under infra/${ENV}."
-              echo "::warning::Provide inputs.module_path when using workflow_dispatch. For PR/push, path filters ensure we only run when infra/** changes."
-              # Leave DIR empty; plan/apply steps will skip if empty.
-            fi
-          fi
-
-          # 3) APPLY flag:
-          # - pull_request: always false (plan only)
-          # - push to main: true
-          # - workflow_dispatch: follow input
-          WILL_APPLY="false"
-          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
-            WILL_APPLY="false"
-          elif [[ "${{ github.event_name }}" == "push" ]]; then
-            # On merge to main, we apply
-            WILL_APPLY="true"
-          else
-            # workflow_dispatch
-            if [[ "${{ inputs.apply }}" == "true" ]]; then
-              WILL_APPLY="true"
-            fi
-          fi
-
-          echo "env=$ENV"           >> "$GITHUB_OUTPUT"
-          echo "dir=$DIR"           >> "$GITHUB_OUTPUT"
-          echo "will_apply=$WILL_APPLY" >> "$GITHUB_OUTPUT"
-
-          echo "Resolved ENV=$ENV, DIR=$DIR, APPLY=$WILL_APPLY"
-
-  # --- Terraform Plan (PR) or Plan (Main/Dispatch) ---
-  plan:
-    needs: [resolve]
-    runs-on: ubuntu-latest
-    if: ${{ needs.resolve.outputs.dir != '' }}  # Skip if module path wasn't resolved
-    # Use environment gates only when we intend to apply later; plan can run freely.
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
-        with:
-          terraform_version: ${{ env.TF_VERSION }}
-
-      - name: Configure AWS (OIDC)
+      - name: Configure AWS Credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: arn:aws:iam::577272335901:role/oidc
-          aws-region: ${{ env.AWS_REGION }}
+          aws-region: us-east-1
+
+      - name: Install Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.7.0
 
       - name: Terraform Init
-        run: terraform -chdir=${{ needs.resolve.outputs.dir }} init -input=false
+        run: terraform init
 
       - name: Terraform Plan
-        run: terraform -chdir=${{ needs.resolve.outputs.dir }} plan -input=false -out=tfplan.binary
-
-  # --- Terraform Apply (only on push to main OR workflow_dispatch when chosen) ---
-  apply:
-    needs: [resolve, plan]
-    runs-on: ubuntu-latest
-    if: ${{ needs.resolve.outputs.will_apply == 'true' && needs.resolve.outputs.dir != '' }}
-    # Protect with GitHub Environment approval; it must match the resolved env
-    environment:
-      name: ${{ needs.resolve.outputs.env }}
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
-        with:
-          terraform_version: ${{ env.TF_VERSION }}
-
-      - name: Configure AWS (OIDC)
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: arn:aws:iam::577272335901:role/oidc
-          aws-region: ${{ env.AWS_REGION }}
-
-      - name: Terraform Init (idempotent)
-        run: terraform -chdir=${{ needs.resolve.outputs.dir }} init -input=false
+        run: terraform plan -var-file="terraform.tfvars"
 
       - name: Terraform Apply
-        run: terraform -chdir=${{ needs.resolve.outputs.dir }} apply -input=false -auto-approve tfplan.binary
+        if: github.ref == 'refs/heads/main'
+        run: terraform apply -auto-approve -var-file="terraform.tfvars"
