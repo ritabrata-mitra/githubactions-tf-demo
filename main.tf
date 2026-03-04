@@ -31,7 +31,7 @@ provider "aws" {
 ###########################################################
 
 module "vpc_advanced" {
-  source = "./modules/vpc-advanced"
+  source = "./modules/vpc"
 
   app_name = var.app_name
 
