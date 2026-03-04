@@ -11,10 +11,23 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Print public IP of GitHub runner
+      - name: Print runner public IP
+        run: curl -s https://checkip.amazonaws.com
+
+      - name: Install Terraform
         run: |
-          echo "Runner public IP:"
-          curl -s https://checkip.amazonaws.com
+          sudo yum install -y yum-utils
+          sudo yum-config-manager --add-repo https://rpm.releases.hashicorp.com/AmazonLinux/hashicorp.repo
+          sudo yum -y install terraform
+
+      - name: Verify Terraform Installation
+        run: terraform -version
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::<ACCOUNT_ID>:role/<OIDC_ROLE>
+          aws-region: us-east-1
 
       - name: Terraform Init
         run: terraform init
